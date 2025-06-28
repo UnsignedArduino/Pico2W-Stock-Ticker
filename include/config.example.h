@@ -1,5 +1,5 @@
 // Rename to config.h
-// Temporary, will later use WiFi provisinioning
+// Temporary, will later use WiFi provisioning to make this unnecessary
 
 #ifndef CONFIG_H
 #define CONFIG_H
@@ -8,9 +8,6 @@
 
 const char* ssid = "your-ssid";         // Replace with your WiFi SSID
 const char* password = "your-password"; // Replace with your WiFi password
-
-const char* host = "streamer.finance.yahoo.com";
-const uint16_t port = 443;
 
 // Comma-separated list of symbols to subscribe to
 const size_t maxSymbolsStringLen = 256; // Adjust as needed

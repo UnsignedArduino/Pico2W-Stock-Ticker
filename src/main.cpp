@@ -8,8 +8,13 @@
 #include <pb_decode.h>
 #include <pricing.pb.h>
 
+// wss://streamer.finance.yahoo.com/?version=2
+const char* HOST = "streamer.finance.yahoo.com";
+const uint16_t PORT = 443;
+const char* PATH = "/?version=2";
+
 WiFiClientSecure wifiClient;
-WebSocketClient wsClient = WebSocketClient(wifiClient, host, port);
+WebSocketClient wsClient = WebSocketClient(wifiClient, HOST, PORT);
 
 void setup() {
   Serial1.begin(115200);
@@ -18,6 +23,9 @@ void setup() {
   delay(1000);
 
   Serial1.println("\n");
+}
+
+void loop() {
   while (WiFi.status() != WL_CONNECTED) {
     Serial1.println("Connecting to WiFi...");
     WiFi.begin(ssid, password);
@@ -26,11 +34,9 @@ void setup() {
   Serial1.println("Connected to WiFi");
   Serial1.print("IP Address: ");
   Serial1.println(WiFi.localIP());
-}
 
-void loop() {
   wifiClient.setInsecure();
-  wsClient.begin("/?version=2");
+  wsClient.begin(PATH);
 
   while (!wsClient.connected()) {
     Serial1.println("Connecting to websocket...");
