@@ -10,7 +10,8 @@ const char* ssid = "your-ssid";         // Replace with your WiFi SSID
 const char* password = "your-password"; // Replace with your WiFi password
 
 // Comma-separated list of symbols to subscribe to
-const size_t maxSymbolsStringLen = 256; // Adjust as needed
+const size_t maxSymbolsStringLen = 256; // Maximum length of symbols string
+const uint16_t maxSymbols = 32; // Maximum number of symbols to subscribe to
 char symbols[maxSymbolsStringLen] =
   "AAPL,GOOGL,MSFT,AMZN,TSLA,NVDA,BTC-USD,ETH-USD";
 
