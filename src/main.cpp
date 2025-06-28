@@ -40,7 +40,25 @@ void loop() {
 
   Serial1.println("Subscribing to tickers...");
   wsClient.beginMessage(TYPE_TEXT);
-  wsClient.print("{\"subscribe\": [\"BTC-USD\"]}");
+  // char symbols[maxSymbolsStringLen] = "AAPL,GOOGL,...";
+  //                       vvv
+  // {"subscribe": ["AAPL", "GOOGL", ...]}
+  wsClient.print("{\"subscribe\": [");
+  Serial1.print("{\"subscribe\": [");
+  char str[maxSymbolsStringLen];
+  strncpy(str, symbols, maxSymbolsStringLen);
+  char* token;
+  char* rest = str;
+  while ((token = strtok_r(rest, ",", &rest))) {
+    if (token != str) {
+      wsClient.print(", ");
+      Serial1.print(", ");
+    }
+    wsClient.printf("\"%s\"", token);
+    Serial1.printf("\"%s\"", token);
+  }
+  wsClient.print("]}");
+  Serial1.println("]}");
   wsClient.endMessage();
   Serial1.println("Subscribed to tickers");
 

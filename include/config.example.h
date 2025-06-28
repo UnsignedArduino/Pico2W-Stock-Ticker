@@ -12,4 +12,9 @@ const char* password = "your-password"; // Replace with your WiFi password
 const char* host = "streamer.finance.yahoo.com";
 const uint16_t port = 443;
 
+// Comma-separated list of symbols to subscribe to
+const size_t maxSymbolsStringLen = 256; // Adjust as needed
+char symbols[maxSymbolsStringLen] =
+  "AAPL,GOOGL,MSFT,AMZN,TSLA,NVDA,BTC-USD,ETH-USD";
+
 #endif
