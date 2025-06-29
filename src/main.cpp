@@ -2,6 +2,9 @@
 #include <Arduino.h>
 #include <ArduinoHttpClient.h>
 #include <ArduinoJson.h>
+#include <MD_MAX72xx.h>
+#include <MD_Parola.h>
+#include <SPI.h>
 #include <StreamUtils.h>
 #include <WiFi.h>
 #include <base64.hpp>
@@ -79,13 +82,13 @@ void updateDisplayStr() {
         sign = '-';
       }
       charsWritten = snprintf(
-        ptr, maxSymbolDisplayStrLen, "%s: $%.2f %+.2f%% (%c$%.2f)   ",
+        ptr, maxSymbolDisplayStrLen, "%s: $%.2f %+.2f%% (%c$%.2f)    ",
         allSymbolPrices[i].id, allSymbolPrices[i].price,
         allSymbolPrices[i].changePercent, sign, abs(allSymbolPrices[i].change));
     } else {
       // No data yet cause price is negative
-      charsWritten = snprintf(ptr, maxSymbolDisplayStrLen,
-                              "%s: (loading...)   ", allSymbolPrices[i].id);
+      charsWritten = snprintf(ptr, maxSymbolDisplayStrLen, "%s: Loading...    ",
+                              allSymbolPrices[i].id);
     }
     ptr += charsWritten;
     if (ptr - displayStr >= maxDisplayStrLen - maxSymbolDisplayStrLen) {
@@ -95,6 +98,20 @@ void updateDisplayStr() {
   Serial1.println("Display string updated:");
   Serial1.println(displayStr);
 }
+
+const MD_MAX72XX::moduleType_t HARDWARE_TYPE = MD_MAX72XX::FC16_HW;
+uint8_t MATRIX_COUNT = 16;
+
+#define USE_HARDWARE_SPI
+const uint8_t CLK_PIN = 2;
+const uint8_t DATA_PIN = 3;
+const uint8_t CS_PIN = 5;
+
+#ifdef USE_HARDWARE_SPI
+MD_Parola p = MD_Parola(HARDWARE_TYPE, SPI, CS_PIN, MATRIX_COUNT);
+#else
+MD_Parola p = MD_Parola(HARDWARE_TYPE, DATA_PIN, CLK_PIN, CS_PIN, MAX_DEVICES);
+#endif
 
 void setup() {
   Serial1.begin(115200);
@@ -106,11 +123,22 @@ void setup() {
   Serial1.println(symbols);
   initializeAllSymbolPrices();
   updateDisplayStr();
+
+  Serial1.println("Initializing display...");
+  SPI.setSCK(CLK_PIN);
+  SPI.setTX(DATA_PIN);
+  SPI.setCS(CS_PIN);
+  SPI.begin();
+  p.begin();
+  p.setIntensity(8);
+  p.displayClear();
 }
 
 void loop() {
   while (WiFi.status() != WL_CONNECTED) {
     Serial1.println("Connecting to WiFi...");
+    p.displayClear();
+    p.print("Connecting to WiFi...");
     WiFi.begin(ssid, password);
     delay(1000);
   }
@@ -121,10 +149,12 @@ void loop() {
   wifiClient.setInsecure();
   wsClient.begin(PATH);
 
-  while (!wsClient.connected()) {
+  do {
     Serial1.println("Connecting to websocket...");
+    p.displayClear();
+    p.print("Connecting to server...");
     delay(1000);
-  }
+  } while (!wsClient.connected());
   Serial1.println("Connected to websocket");
 
   Serial1.println("Subscribing to tickers...");
@@ -146,8 +176,11 @@ void loop() {
   Serial1.println("]}");
   wsClient.endMessage();
   Serial1.println("Subscribed to tickers");
+  delay(1000);
 
   while (wsClient.connected()) {
+    static uint32_t turnOffBuiltinAt = 0;
+
     if (wsClient.parseMessage() > 0) {
       JsonDocument doc;
 
@@ -183,13 +216,22 @@ void loop() {
           updateSymbolPrice(pricingData.id, pricingData.price,
                             pricingData.change, pricingData.change_percent);
           updateDisplayStr();
+          digitalWrite(LED_BUILTIN, HIGH);
+          turnOffBuiltinAt = millis() + 100;
         } else {
           Serial1.println("Received non-pricing message, ignoring.");
         }
       }
     }
 
-    delay(1000);
+    if (p.displayAnimate()) {
+      p.displayText(displayStr, PA_LEFT, 40, 0, PA_SCROLL_LEFT, PA_SCROLL_LEFT);
+    }
+
+    if (turnOffBuiltinAt != 0 && millis() > turnOffBuiltinAt) {
+      digitalWrite(LED_BUILTIN, LOW);
+      turnOffBuiltinAt = 0;
+    }
   }
   Serial1.println("Disconnected");
   delay(5000);
