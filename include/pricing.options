@@ -1,2 +1,0 @@
-// A guess, but I really don't want to deal with callbacks from Nanopb
-PricingData.id max_size:32
