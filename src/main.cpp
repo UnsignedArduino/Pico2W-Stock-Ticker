@@ -2,6 +2,7 @@
 #include <Arduino.h>
 #include <ArduinoHttpClient.h>
 #include <ArduinoJson.h>
+#include <MD_Parola.h>
 #include <StreamUtils.h>
 #include <WiFi.h>
 
@@ -70,6 +71,24 @@ void updateSymbolData(const char* id, float openPrice, float closePrice) {
   Serial1.printf("Symbol '%s' not found, cannot update.\n", id);
 }
 
+const size_t maxSymbolDisplayStrLen = 64;
+const size_t maxDisplayStrLen = maxSymbolDisplayStrLen * maxSymbols;
+char displayStr[maxDisplayStrLen];
+
+const MD_MAX72XX::moduleType_t HARDWARE_TYPE = MD_MAX72XX::FC16_HW;
+uint8_t MATRIX_COUNT = 16;
+
+#define USE_HARDWARE_SPI
+const uint8_t CLK_PIN = 2;
+const uint8_t DATA_PIN = 3;
+const uint8_t CS_PIN = 5;
+
+#ifdef USE_HARDWARE_SPI
+MD_Parola p = MD_Parola(HARDWARE_TYPE, SPI, CS_PIN, MATRIX_COUNT);
+#else
+MD_Parola p = MD_Parola(HARDWARE_TYPE, DATA_PIN, CLK_PIN, CS_PIN, MAX_DEVICES);
+#endif
+
 void setup() {
   Serial1.begin(115200);
   pinMode(LED_BUILTIN, OUTPUT);
@@ -79,11 +98,22 @@ void setup() {
 
   Serial1.println(symbols);
   initializeSymbolData();
+
+  SPI.setSCK(CLK_PIN);
+  SPI.setTX(DATA_PIN);
+  SPI.setCS(CS_PIN);
+  SPI.begin();
+  p.begin();
+  p.setIntensity(8);
+  p.displayClear();
+  p.setSpeed(15);
 }
 
 void loop() {
   while (WiFi.status() != WL_CONNECTED) {
     Serial1.println("Connecting to WiFi...");
+    p.displayClear();
+    p.print("Connecting to WiFi...");
     WiFi.begin(ssid, password);
     delay(1000);
   }
@@ -94,6 +124,8 @@ void loop() {
   while (WiFi.status() == WL_CONNECTED) {
     static uint32_t lastRequestTime = -requestPeriod;
     if (millis() - lastRequestTime >= requestPeriod) {
+      digitalWrite(LED_BUILTIN, HIGH);
+      // Fetch (network request)
       Serial1.println("Requesting latest stock bars from Alpaca Markets API");
       WiFiClientSecure wifiClient;
       wifiClient.setInsecure();
@@ -110,6 +142,7 @@ void loop() {
       client.endRequest();
       int16_t statusCode = client.responseStatusCode();
       if (statusCode == 200) {
+        // Parse JSON
         Serial1.println("Status code 200 (ok) - parsing response now");
         client.skipResponseHeaders();
         ReadBufferingClient bufferedClient(client, 256);
@@ -149,6 +182,66 @@ void loop() {
       Serial1.printf("Request finished, requesting again in %u ms\n",
                      requestPeriod);
       lastRequestTime = millis();
+      // Update string to display
+      memset(displayStr, 0, maxDisplayStrLen);
+      char* ptr = displayStr;
+      if (statusCode == 200) { // OK
+        for (uint16_t i = 0; i < symbolsCount; i++) {
+          size_t charsWritten = 0;
+          if (allSymbols[i].openPrice >
+              0) { // Non-negative means data is available
+            const float change =
+              allSymbols[i].closePrice - allSymbols[i].openPrice;
+            const float changePercent =
+              (change / allSymbols[i].openPrice) * 100.0f;
+            char sign = '+';
+            if (change < 0) {
+              sign = '-';
+            }
+            charsWritten = snprintf(ptr, maxSymbolDisplayStrLen,
+                                    "%s: $%.2f %+.2f%% (%c$%.2f)    ",
+                                    allSymbols[i].id, allSymbols[i].closePrice,
+                                    changePercent, sign, abs(change));
+          } else {
+            // No data yet cause price is negative
+            charsWritten = snprintf(ptr, maxSymbolDisplayStrLen,
+                                    "%s: Loading...    ", allSymbols[i].id);
+          }
+          ptr += charsWritten;
+          if (ptr - displayStr >= maxDisplayStrLen - maxSymbolDisplayStrLen) {
+            break; // Prevent overflow
+          }
+        }
+      } else if (statusCode == 400) {
+        snprintf(displayStr, maxDisplayStrLen,
+                 "Error - Invalid request, check symbols or API key ID and "
+                 "secret key");
+      } else if (statusCode == 403) {
+        snprintf(displayStr, maxDisplayStrLen,
+                 "Error - Forbidden request, check API key ID and secret key");
+      } else if (statusCode == 429) {
+        snprintf(displayStr, maxDisplayStrLen,
+                 "Error - Too many requests, check request period");
+      } else if (statusCode == 500) {
+        snprintf(displayStr, maxDisplayStrLen,
+                 "Error - Internal server error, try again later");
+      } else {
+        snprintf(
+          displayStr, maxDisplayStrLen,
+          "Error - Unexpected status code of %d, try again later or check "
+          "API status",
+          statusCode);
+      }
+      Serial1.println("Display string updated:");
+      Serial1.println(displayStr);
+      digitalWrite(LED_BUILTIN, LOW);
+    }
+
+    if (p.displayAnimate()) {
+      static char textToScroll[maxDisplayStrLen];
+      strncpy(textToScroll, displayStr, maxDisplayStrLen);
+      p.displayText(textToScroll, PA_LEFT, 40, 0, PA_SCROLL_LEFT,
+                    PA_SCROLL_LEFT);
     }
   }
 
