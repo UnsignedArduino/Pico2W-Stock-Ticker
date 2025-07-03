@@ -2,9 +2,7 @@
 #include <Arduino.h>
 #include <ArduinoHttpClient.h>
 #include <ArduinoJson.h>
-#include <MD_MAX72xx.h>
 #include <MD_Parola.h>
-#include <SPI.h>
 #include <StreamUtils.h>
 #include <WiFi.h>
 #include <base64.hpp>
@@ -87,8 +85,8 @@ void updateDisplayStr() {
         allSymbolPrices[i].changePercent, sign, abs(allSymbolPrices[i].change));
     } else {
       // No data yet cause price is negative
-      charsWritten = snprintf(ptr, maxSymbolDisplayStrLen,
-                              "%s: No data yet...    ", allSymbolPrices[i].id);
+      charsWritten = snprintf(ptr, maxSymbolDisplayStrLen, "%s: No data yet...    ",
+                              allSymbolPrices[i].id);
     }
     ptr += charsWritten;
     if (ptr - displayStr >= maxDisplayStrLen - maxSymbolDisplayStrLen) {
