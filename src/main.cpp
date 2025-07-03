@@ -85,8 +85,8 @@ void updateDisplayStr() {
         allSymbolPrices[i].changePercent, sign, abs(allSymbolPrices[i].change));
     } else {
       // No data yet cause price is negative
-      charsWritten = snprintf(ptr, maxSymbolDisplayStrLen, "%s: No data yet...    ",
-                              allSymbolPrices[i].id);
+      charsWritten = snprintf(ptr, maxSymbolDisplayStrLen,
+                              "%s: No data yet...    ", allSymbolPrices[i].id);
     }
     ptr += charsWritten;
     if (ptr - displayStr >= maxDisplayStrLen - maxSymbolDisplayStrLen) {
@@ -224,6 +224,14 @@ void loop() {
           Serial1.println("Received non-pricing message, ignoring.");
         }
       }
+    }
+
+    if (p.displayAnimate()) {
+      // Prevent shifting due to the text changing
+      static char copyOfDisplayStr[maxDisplayStrLen];
+      strncpy(copyOfDisplayStr, displayStr, maxDisplayStrLen);
+      p.displayText(copyOfDisplayStr, PA_LEFT, 50, 0, PA_SCROLL_LEFT,
+                    PA_SCROLL_LEFT);
     }
 
     if (turnOffBuiltinAt != 0 && millis() > turnOffBuiltinAt) {
