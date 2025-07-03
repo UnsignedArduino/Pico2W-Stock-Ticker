@@ -87,8 +87,8 @@ void updateDisplayStr() {
         allSymbolPrices[i].changePercent, sign, abs(allSymbolPrices[i].change));
     } else {
       // No data yet cause price is negative
-      charsWritten = snprintf(ptr, maxSymbolDisplayStrLen, "%s: Loading...    ",
-                              allSymbolPrices[i].id);
+      charsWritten = snprintf(ptr, maxSymbolDisplayStrLen,
+                              "%s: No data yet...    ", allSymbolPrices[i].id);
     }
     ptr += charsWritten;
     if (ptr - displayStr >= maxDisplayStrLen - maxSymbolDisplayStrLen) {
@@ -176,6 +176,9 @@ void loop() {
   Serial1.println("]}");
   wsClient.endMessage();
   Serial1.println("Subscribed to tickers");
+
+  p.displayClear();
+  p.print("Connected!");
   delay(1000);
 
   while (wsClient.connected()) {
@@ -216,16 +219,13 @@ void loop() {
           updateSymbolPrice(pricingData.id, pricingData.price,
                             pricingData.change, pricingData.change_percent);
           updateDisplayStr();
+
           digitalWrite(LED_BUILTIN, HIGH);
           turnOffBuiltinAt = millis() + 100;
         } else {
           Serial1.println("Received non-pricing message, ignoring.");
         }
       }
-    }
-
-    if (p.displayAnimate()) {
-      p.displayText(displayStr, PA_LEFT, 40, 0, PA_SCROLL_LEFT, PA_SCROLL_LEFT);
     }
 
     if (turnOffBuiltinAt != 0 && millis() > turnOffBuiltinAt) {
