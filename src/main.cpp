@@ -1,11 +1,11 @@
 // #define LOG_FREE_MEMORY
 // #define LOG_JSON_PARSED
-// #define BUFFER_JSON_READING
+#define BUFFER_JSON_READING
 
 #include "config.h"
 #include <Arduino.h>
-#include <ArduinoHttpClient.h>
 #include <ArduinoJson.h>
+#include <HTTPClient.h>
 #if defined(LOG_FREE_MEMORY) || defined(LOG_JSON_PARSED) ||                    \
   defined(BUFFER_JSON_READING)
   #include <StreamUtils.h>
@@ -47,14 +47,14 @@ void initializeAllSymbolPrices() {
 
 void updateSymbolPrice(const char* id, float price, float change,
                        float changePercent) {
-  for (uint16_t i = 0; i < maxSymbols; i++) {
-    if (strcmp(allSymbolPrices[i].id, id) == 0) {
-      allSymbolPrices[i].price = price;
-      allSymbolPrices[i].change = change;
-      allSymbolPrices[i].changePercent = changePercent;
+  for (auto& allSymbolPrice : allSymbolPrices) {
+    if (strcmp(allSymbolPrice.id, id) == 0) {
+      allSymbolPrice.price = price;
+      allSymbolPrice.change = change;
+      allSymbolPrice.changePercent = changePercent;
       Serial1.printf("Updated symbol %s in symbol data list (price: %.2f, "
                      "change: %.2f, changePercent: %.2f%%)\n",
-                     allSymbolPrices[i].id, price, change, changePercent);
+                     allSymbolPrice.id, price, change, changePercent);
       return;
     }
   }
@@ -126,110 +126,108 @@ void loop() {
                      rp2040.getFreeHeap() / 1024, rp2040.getFreeStack() / 1024);
 #endif
       { // Scope to destroy client to print free memory after request
-        WiFiClientSecure wifiClient;
-        wifiClient
-          .setInsecure(); // Disable SSL certificate verification for now
         // The URL is:
         // https://data.alpaca.markets/v2/stocks/snapshots?symbols={SYMBOLS}&feed={FEED}
-
-        // We need to send something like this:
-        // GET /v2/stocks/snapshots?symbols=AAPL%2CTSLA&feed=iex HTTP/1.1
-        // Accept: application/json
-        // Apca-Api-Key-Id: ********************
-        // Apca-Api-Secret-Key: ****************************************
-        // Host: data.alpaca.markets
-        HttpClient client(wifiClient, "data.alpaca.markets", 443);
-        client.beginRequest();
-        // Length of /v2/stocks/snapshots?symbols=&feed=iex is 38 chars so 64
-        // chars + maxSymbolsStringLen is enough
-        const size_t maxURLLen = 64 + maxSymbolsStringLen;
+        HTTPClient httpsClient;
+        httpsClient.setInsecure();
+        httpsClient.useHTTP10(true);
+        const size_t maxURLLen = 80 + maxSymbolsStringLen;
         char url[maxURLLen];
-        snprintf(url, maxURLLen, "/v2/stocks/snapshots?symbols=%s&feed=%s",
-                 symbols, sourceFeed);
-        Serial1.printf("Requesting https://data.alpaca.markets%s\n", url);
-        client.get(url);
-        client.sendHeader("Accept", "application/json");
-        client.sendHeader("Apca-Api-Key-Id", apcaApiKeyId);
-        client.sendHeader("Apca-Api-Secret-Key", apcaApiSecretKey);
-        client.endRequest();
-        int statusCode = client.responseStatusCode();
-        client.skipResponseHeaders();
+        snprintf(
+          url, maxURLLen,
+          "https://data.alpaca.markets/v2/stocks/snapshots?symbols=%s&feed=%s",
+          symbols, sourceFeed);
+        Serial1.printf("Requesting %s\n", url);
+        if (httpsClient.begin(url)) {
+          httpsClient.addHeader("Accept", "application/json");
+          httpsClient.addHeader("Apca-Api-Key-Id", apcaApiKeyId);
+          httpsClient.addHeader("Apca-Api-Secret-Key", apcaApiSecretKey);
+          int32_t statusCode = httpsClient.GET();
 #ifdef BUFFER_JSON_READING
-        ReadBufferingClient bufferedClient(client, 256);
-#endif
-#ifdef LOG_FREE_MEMORY
-        Serial1.printf(
-          "Free memory after sending request: heap %d kb, stack %d kb\n",
-          rp2040.getFreeHeap() / 1024, rp2040.getFreeStack() / 1024);
-#endif
-        if (statusCode == 200) { // OK
-          JsonDocument doc;
-#ifdef LOG_JSON_PARSED
-          Serial1.println("JSON read:");
-  #ifdef BUFFER_JSON_READING
-          ReadLoggingStream loggingStream(bufferedClient, Serial1);
-  #else
-          ReadLoggingStream loggingStream(client, Serial1);
-  #endif
-          DeserializationError error = deserializeJson(doc, loggingStream);
-          Serial1.println("");
-#else
-  #ifdef BUFFER_JSON_READING
-          DeserializationError error = deserializeJson(doc, bufferedClient);
-  #else
-          DeserializationError error = deserializeJson(doc, client);
-  #endif
+          ReadBufferingClient bufferedClient(httpsClient.getStream(), 256);
 #endif
 #ifdef LOG_FREE_MEMORY
           Serial1.printf(
-            "Free memory after JSON parse: heap %d kb, stack %d kb\n",
+            "Free memory after sending request: heap %d kb, stack %d kb\n",
             rp2040.getFreeHeap() / 1024, rp2040.getFreeStack() / 1024);
 #endif
-          if (error) {
-            Serial1.printf("Failed to parse JSON: %s\n", error.c_str());
-          } else {
-            for (JsonPair snapshot : doc.as<JsonObject>()) {
-              const char* symbol = snapshot.key().c_str();
-              JsonObject daily_bar = snapshot.value()["dailyBar"];
-              float open_price = daily_bar["o"];  // Start of day price
-              float close_price = daily_bar["c"]; // End of day / current price
-              updateSymbolPrice(symbol, close_price, close_price - open_price,
-                                ((close_price - open_price) / open_price) *
-                                  100.0f);
+          if (statusCode == 200) { // OK
+            JsonDocument doc;
+#ifdef LOG_JSON_PARSED
+            Serial1.println("JSON read:");
+  #ifdef BUFFER_JSON_READING
+            ReadLoggingStream loggingStream(bufferedClient, Serial1);
+  #else
+            ReadLoggingStream loggingStream(httpsClient.getStream(), Serial1);
+  #endif
+            DeserializationError error = deserializeJson(doc, loggingStream);
+            Serial1.println("");
+#else
+  #ifdef BUFFER_JSON_READING
+            DeserializationError error = deserializeJson(doc, bufferedClient);
+  #else
+            DeserializationError error =
+              deserializeJson(doc, httpsClient.getStream());
+  #endif
+#endif
+#ifdef LOG_FREE_MEMORY
+            Serial1.printf(
+              "Free memory after JSON parse: heap %d kb, stack %d kb\n",
+              rp2040.getFreeHeap() / 1024, rp2040.getFreeStack() / 1024);
+#endif
+            if (error) {
+              Serial1.printf("Failed to parse JSON: %s\n", error.c_str());
+            } else {
+              for (JsonPair snapshot : doc.as<JsonObject>()) {
+                const char* symbol = snapshot.key().c_str();
+                JsonObject daily_bar = snapshot.value()["dailyBar"];
+                float open_price = daily_bar["o"]; // Start of day price
+                float close_price =
+                  daily_bar["c"]; // End of day / current price
+                updateSymbolPrice(symbol, close_price, close_price - open_price,
+                                  ((close_price - open_price) / open_price) *
+                                    100.0f);
+              }
+              updateDisplayStr();
             }
-            updateDisplayStr();
+          } else {
+            Serial1.printf("Bad status code: %d\n", statusCode);
+            switch (statusCode) {
+              case 400: { // Bad request
+                Serial1.println("Bad request, check your API key and secret.");
+                break;
+              }
+              case 403: { // Forbidden
+                Serial1.println("Forbidden, check your API key and secret.");
+                break;
+              }
+              case 429: { // Too many requests
+                Serial1.println(
+                  "Too many requests, check your request period.");
+                break;
+              }
+              case 500: { // Internal server error
+                Serial1.println("Internal server error, check Alpaca Markets' "
+                                "Slack or Community Forum.");
+                break;
+              }
+              default: { // Unknown
+                break;
+              }
+            }
+            Serial1.println("Response: ");
+#ifdef BUFFER_JSON_READING
+            while (bufferedClient.available()) {
+              Serial1.write(bufferedClient.read());
+            }
+#else
+            while (httpsClient.getStream().available()) {
+              Serial1.write(httpsClient.getStream().read());
+            }
+#endif
           }
         } else {
-          Serial1.printf("Bad status code: %d\n", statusCode);
-          switch (statusCode) {
-            case 400: { // Bad request
-              Serial1.println("Bad request, check your API key and secret.");
-              break;
-            }
-            case 403: { // Forbidden
-              Serial1.println("Forbidden, check your API key and secret.");
-              break;
-            }
-            case 429: { // Too many requests
-              Serial1.println("Too many requests, check your request period.");
-              break;
-            }
-            case 500: { // Internal server error
-              Serial1.println("Internal server error, check Alpaca Markets' "
-                              "Slack or Community Forum.");
-              break;
-            }
-          }
-          Serial1.println("Response: ");
-#ifdef BUFFER_JSON_READING
-          while (bufferedClient.available()) {
-            Serial1.write(bufferedClient.read());
-          }
-#else
-          while (client.available()) {
-            Serial1.write(client.read());
-          }
-#endif
+          Serial1.println("Failed to initialize request");
         }
       }
 #ifdef LOG_FREE_MEMORY
