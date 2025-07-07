@@ -1,6 +1,7 @@
 #include "config.h"
 #include <Arduino.h>
 #include <ArduinoHttpClient.h>
+#include <ArduinoJson.h>
 #include <StreamUtils.h>
 #include <WiFi.h>
 
@@ -44,8 +45,9 @@ void updateSymbolPrice(const char* id, float price, float change,
       allSymbolPrices[i].price = price;
       allSymbolPrices[i].change = change;
       allSymbolPrices[i].changePercent = changePercent;
-      Serial1.printf("Updated symbol %s in symbol data list\n",
-                     allSymbolPrices[i].id);
+      Serial1.printf("Updated symbol %s in symbol data list (price: %.2f, "
+                     "change: %.2f, changePercent: %.2f%%)\n",
+                     allSymbolPrices[i].id, price, change, changePercent);
       return;
     }
   }
@@ -141,10 +143,20 @@ void loop() {
       client.skipResponseHeaders();
       ReadBufferingClient bufferedClient(client, 256);
       if (statusCode == 200) { // OK
-        // For now, print response
-        Serial1.println("Response: ");
-        while (bufferedClient.available()) {
-          Serial1.write(bufferedClient.read());
+        JsonDocument doc;
+        DeserializationError error = deserializeJson(doc, bufferedClient);
+        if (error) {
+          Serial1.printf("Failed to parse JSON: %s\n", error.c_str());
+        } else {
+          for (JsonPair snapshot : doc.as<JsonObject>()) {
+            const char* symbol = snapshot.key().c_str();
+            JsonObject daily_bar = snapshot.value()["dailyBar"];
+            float open_price = daily_bar["o"];  // Start of day price
+            float close_price = daily_bar["c"]; // End of day / current price
+            updateSymbolPrice(symbol, close_price, close_price - open_price,
+                              ((close_price - open_price) / open_price) *
+                                100.0f);
+          }
         }
       } else {
         Serial1.printf("Bad status code: %d\n", statusCode);
@@ -172,6 +184,7 @@ void loop() {
           Serial1.write(bufferedClient.read());
         }
       }
+      updateDisplayStr();
       refreshAtTime = millis() + requestPeriod;
       Serial1.printf("\nNext request in %d seconds\n", requestPeriod / 1000);
     }

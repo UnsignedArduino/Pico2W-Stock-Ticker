@@ -25,12 +25,9 @@ const char symbols[maxSymbolsStringLen] = "AAPL,GOOGL,MSFT,AMZN,TSLA,NVDA";
 // Only iex or delayed_sip are available with free account
 const char* sourceFeed = "iex";
 
-// Request period in milliseconds, how long to wait before asking for more fresh
-// data for every symbol Free account gets 200 requests per minute, so for max
-// of 32 symbols, we can request data every:
-// (60 seconds / 200 hits) * (32 hits / refresh) = 9.6 seconds
-// MINIMUM refresh time to not hit limit
-// But 30 seconds before requesting again is definitely fast enough for me
-const uint32_t requestPeriod = 30 * 1000;
+// Request period in milliseconds, how long to wait before asking for more data
+// 200 requests / min is rate limit for free account
+// One request is used to download all symbol data
+const uint32_t requestPeriod = 60 * 1000;
 
 #endif
