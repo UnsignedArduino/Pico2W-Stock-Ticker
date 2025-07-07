@@ -136,24 +136,6 @@ void setup() {
   display.begin();
   display.clear();
   display.control(MD_MAX72XX::INTENSITY, MAX_INTENSITY / 2);
-
-  //  textDisplay.print("Hello, world! Here is a long string to see what happens
-  //  "
-  //                    "when text overflows");
-  const size_t bufSize = 256;
-  char buf[bufSize];
-  scrollingDisplay.setText(buf);
-
-  while (true) {
-    // Need spaces to overwrite old text
-    snprintf(buf, bufSize,
-             "Hello, world! Here is an updating number: %lu And some text %lu "
-             "after that",
-             millis(), millis() / 100);
-    scrollingDisplay.textChangedSize();
-    scrollingDisplay.update();
-    delay(20);
-  }
 }
 
 void loop() {

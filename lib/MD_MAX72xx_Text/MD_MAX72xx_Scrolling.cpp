@@ -12,30 +12,45 @@ void MD_MAX72XX_Scrolling::update() {
 
   this->display->control(MD_MAX72XX::UPDATE, MD_MAX72XX::OFF);
   this->display->clear();
-  int16_t thisCurCol = this->curCol;
-  for (size_t i = 0; i < strlen(this->strToDisplay); i++) {
-    thisCurCol -= this->display->setChar(thisCurCol, this->strToDisplay[i]) +
-                  this->spaceBetweenChars;
+  const uint16_t colCount = this->display->getColumnCount();
+  int16_t thisCurCol = this->curCharColOffset;
+  for (size_t i = this->curCharIndex;
+       i < strlen(this->strToDisplay) && thisCurCol < colCount; i++) {
+    thisCurCol +=
+      this->display->setChar(colCount - thisCurCol, this->strToDisplay[i]) +
+      this->spaceBetweenChars;
   }
   this->display->control(MD_MAX72XX::UPDATE, MD_MAX72XX::ON);
 
-  this->curCol += 1; // How much to shift for every scroll
-  if (this->curCol >= this->strWidth + this->display->getColumnCount()) {
-    this->curCol = 0; // Reset to start if scrolled past end
+  // This column offset is from the left instead of from the right
+  // So to move text left, we subtract
+  this->curCharColOffset -= 1;
+  // If the current character is scrolled completely past the left edge of the
+  // display, then focus on the next character and set it's offset to 0
+  if (this->curCharColOffset <
+      -this->getTextWidth(this->strToDisplay[this->curCharIndex])) {
+    this->curCharColOffset = 0;
+    this->curCharIndex++;
+  }
+  if (this->curCharIndex >= strlen(this->strToDisplay)) {
+    this->reset();
   }
 }
 
-uint16_t MD_MAX72XX_Scrolling::getTextWidth() {
-  if (this->strToDisplay == nullptr) {
-    return 0;
-  }
+uint16_t MD_MAX72XX_Scrolling::getTextWidth(const char* text) {
   uint16_t width = 0;
   const size_t tempBufSize = 16; // Useless buffer, just to get column width
   uint8_t tempBuf[tempBufSize];
-  for (size_t i = 0; i < strlen(this->strToDisplay); i++) {
-    width +=
-      this->display->getChar(this->strToDisplay[i], tempBufSize, tempBuf) +
-      this->spaceBetweenChars;
+  for (size_t i = 0; i < strlen(text); i++) {
+    width += this->display->getChar(text[i], tempBufSize, tempBuf) +
+             this->spaceBetweenChars;
   }
   return width;
+}
+
+uint16_t MD_MAX72XX_Scrolling::getTextWidth(char c) {
+  const size_t tempBufSize = 16; // Useless buffer, just to get column width
+  uint8_t tempBuf[tempBufSize];
+  return this->display->getChar(c, tempBufSize, tempBuf) +
+         this->spaceBetweenChars;
 }

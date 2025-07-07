@@ -18,29 +18,32 @@ class MD_MAX72XX_Scrolling {
 
     void setText(const char* text) {
       this->strToDisplay = text;
-      this->curCol = 0;
-      this->textChangedSize();
+      this->reset();
     }
 
     const char* getText() const {
       return this->strToDisplay;
     }
 
-    void textChangedSize() {
-      this->strWidth = this->getTextWidth();
-    }
-
     void update();
+
+    void reset() {
+      this->curCharIndex = 0;
+      this->curCharColOffset = this->display->getColumnCount();
+    }
 
   protected:
     MD_MAX72XX* display = nullptr;
     const char* strToDisplay = nullptr;
-    int16_t curCol = 0;
-    int16_t strWidth = 0;
+    int16_t curCharIndex = 0;
+    int16_t curCharColOffset =
+      0; // Instead of 0 being the right, we'll define 0 as offset from the left
+         // edge of the display
 
     const uint16_t spaceBetweenChars = 1;
 
-    uint16_t getTextWidth();
+    uint16_t getTextWidth(const char* text);
+    uint16_t getTextWidth(char c);
 };
 
 #endif // PICO2W_STOCK_TICKER_MD_MAX72XX_SCROLLING_H
