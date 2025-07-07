@@ -106,18 +106,9 @@ void setup() {
 }
 
 void loop() {
-  while (WiFi.status() != WL_CONNECTED) {
-    Serial1.println("Connecting to WiFi...");
-    WiFi.begin(ssid, password);
-    delay(1000);
-  }
-  Serial1.println("Connected to WiFi");
-  Serial1.print("IP Address: ");
-  Serial1.println(WiFi.localIP());
-
   static uint32_t refreshAtTime;
-  refreshAtTime = 0; // Force refresh on first loop
-  while (WiFi.status() == WL_CONNECTED) {
+
+  if (WiFi.status() == WL_CONNECTED) {
     if (refreshAtTime < millis()) {
       // Time to call API
       Serial1.println("Requesting data from Alpaca Markets API...");
@@ -237,8 +228,15 @@ void loop() {
       refreshAtTime = millis() + requestPeriod;
       Serial1.printf("Next request in %d seconds\n\n", requestPeriod / 1000);
     }
-  }
+  } else {
+    Serial1.println("Connecting to WiFi...");
+    WiFi.begin(ssid, password);
+    delay(1000);
 
-  Serial1.println("Disconnected from WiFi");
-  delay(5000);
+    Serial1.println("Connected to WiFi");
+    Serial1.print("IP Address: ");
+    Serial1.println(WiFi.localIP());
+
+    refreshAtTime = 0; // Force refresh on (re)connect
+  }
 }
