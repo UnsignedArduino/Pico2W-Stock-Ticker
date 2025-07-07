@@ -136,6 +136,9 @@ void setup() {
   display.begin();
   display.clear();
   display.control(MD_MAX72XX::INTENSITY, MAX_INTENSITY / 2);
+
+  scrollingDisplay.setText(displayStr);
+  scrollingDisplay.periodBetweenShifts = 30; // 30 ms between shifts
 }
 
 void loop() {
@@ -261,15 +264,19 @@ void loop() {
       refreshAtTime = millis() + requestPeriod;
       Serial1.printf("Next request in %d seconds\n\n", requestPeriod / 1000);
     }
+    scrollingDisplay.update();
   } else {
     Serial1.println("Connecting to WiFi...");
+    textDisplay.print("Connecting to WiFi...");
     WiFi.begin(ssid, password);
     delay(1000);
 
     Serial1.println("Connected to WiFi");
+    textDisplay.print("\nConnected to WiFi!");
     Serial1.print("IP Address: ");
     Serial1.println(WiFi.localIP());
-
+    delay(1000);
     refreshAtTime = 0; // Force refresh on (re)connect
+    scrollingDisplay.reset();
   }
 }

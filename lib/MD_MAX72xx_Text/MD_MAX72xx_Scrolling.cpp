@@ -10,6 +10,11 @@ void MD_MAX72XX_Scrolling::update() {
     return; // Nothing to display
   }
 
+  if (this->nextShiftTime > millis()) {
+    return; // Not time to shift yet
+  }
+  this->nextShiftTime = millis() + this->periodBetweenShifts;
+
   this->display->control(MD_MAX72XX::UPDATE, MD_MAX72XX::OFF);
   this->display->clear();
   const uint16_t colCount = this->display->getColumnCount();

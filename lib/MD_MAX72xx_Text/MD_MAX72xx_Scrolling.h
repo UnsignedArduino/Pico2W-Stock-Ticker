@@ -30,7 +30,11 @@ class MD_MAX72XX_Scrolling {
     void reset() {
       this->curCharIndex = 0;
       this->curCharColOffset = this->display->getColumnCount();
+      this->nextShiftTime = 0; // Reset next shift time to 0 so it will shift
+                               // immediately on next update
     }
+
+    uint32_t periodBetweenShifts = 50;
 
   protected:
     MD_MAX72XX* display = nullptr;
@@ -41,6 +45,8 @@ class MD_MAX72XX_Scrolling {
          // edge of the display
 
     const uint16_t spaceBetweenChars = 1;
+
+    uint32_t nextShiftTime = 0;
 
     uint16_t getTextWidth(const char* text);
     uint16_t getTextWidth(char c);
