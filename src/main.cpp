@@ -1,13 +1,16 @@
+// #define LOG_FREE_MEMORY
+// #define LOG_JSON_PARSED
+// #define BUFFER_JSON_READING
+
 #include "config.h"
 #include <Arduino.h>
 #include <ArduinoHttpClient.h>
 #include <ArduinoJson.h>
-#include <StreamUtils.h>
+#if defined(LOG_FREE_MEMORY) || defined(LOG_JSON_PARSED) ||                    \
+  defined(BUFFER_JSON_READING)
+  #include <StreamUtils.h>
+#endif
 #include <WiFi.h>
-
-// #define LOG_FREE_MEMORY
-// #define LOG_JSON_PARSED
-// #define BUFFER_JSON_READING
 
 const size_t maxIDLen = 32;
 // clang-format off
