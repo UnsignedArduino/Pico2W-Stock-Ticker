@@ -1,6 +1,7 @@
 // #define LOG_FREE_MEMORY
 // #define LOG_JSON_PARSED
 #define BUFFER_JSON_READING
+#define USE_HARDWARE_SPI
 
 #include "config.h"
 #include <Arduino.h>
@@ -10,6 +11,9 @@
   defined(BUFFER_JSON_READING)
   #include <StreamUtils.h>
 #endif
+#include <MD_MAX72xx.h>
+#include <MD_MAX72xx_Text.h>
+#include <SPI.h>
 #include <WiFi.h>
 
 const size_t maxIDLen = 32;
@@ -93,6 +97,25 @@ void updateDisplayStr() {
   Serial1.println(displayStr);
 }
 
+const MD_MAX72XX::moduleType_t HARDWARE_TYPE = MD_MAX72XX::FC16_HW;
+const uint8_t MAX_DEVICES = 16;
+
+#define USE_HARDWARE_SPI
+const uint8_t CLK_PIN = 2;
+const uint8_t DATA_PIN = 3;
+const uint8_t CS_PIN = 5;
+
+#ifdef USE_HARDWARE_SPI
+// Not using Parola for manual control
+MD_MAX72XX display = MD_MAX72XX(HARDWARE_TYPE, SPI, CS_PIN, MAX_DEVICES);
+#else
+MD_MAX72XX display =
+  MD_MAX72XX(HARDWARE_TYPE, DATA_PIN, CLK_PIN, CS_PIN, MAX_DEVICES);
+#endif
+
+MD_MAX72XX_Print textDisplay(&display);
+MD_MAX72XX_Scrolling scrollingDisplay(&display);
+
 void setup() {
   Serial1.begin(115200);
   pinMode(LED_BUILTIN, OUTPUT);
@@ -103,6 +126,34 @@ void setup() {
   Serial1.println(symbols);
   initializeAllSymbolPrices();
   updateDisplayStr();
+
+#ifdef USE_HARDWARE_SPI
+  SPI.setSCK(CLK_PIN);
+  SPI.setTX(DATA_PIN);
+  SPI.setCS(CS_PIN);
+  SPI.begin();
+#endif
+  display.begin();
+  display.clear();
+  display.control(MD_MAX72XX::INTENSITY, MAX_INTENSITY / 2);
+
+  //  textDisplay.print("Hello, world! Here is a long string to see what happens
+  //  "
+  //                    "when text overflows");
+  const size_t bufSize = 256;
+  char buf[bufSize];
+  scrollingDisplay.setText(buf);
+
+  while (true) {
+    // Need spaces to overwrite old text
+    snprintf(buf, bufSize,
+             "Hello, world! Here is an updating number: %lu And some text %lu "
+             "after that",
+             millis(), millis() / 100);
+    scrollingDisplay.textChangedSize();
+    scrollingDisplay.update();
+    delay(20);
+  }
 }
 
 void loop() {
