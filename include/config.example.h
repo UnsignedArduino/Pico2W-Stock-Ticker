@@ -6,6 +6,12 @@
 
 #include <Arduino.h>
 
+// How many **groups of four** 8x8 MAX7219 modules are connected
+const uint8_t matrixModulesCount = 4;
+// How long to wait (in ms) between each shift while scrolling text
+// (lower is faster)
+const uint16_t scrollPeriodSpeed = 30;
+
 const char* ssid = "your-ssid";         // Replace with your WiFi SSID
 const char* password = "your-password"; // Replace with your WiFi password
 // Replace with your Alpaca Markets API key ID

@@ -7,13 +7,10 @@
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include <HTTPClient.h>
-#if defined(LOG_FREE_MEMORY) || defined(LOG_JSON_PARSED) ||                    \
-  defined(BUFFER_JSON_READING)
-  #include <StreamUtils.h>
-#endif
 #include <MD_MAX72xx.h>
 #include <MD_MAX72xx_Text.h>
 #include <SPI.h>
+#include <StreamUtils.h>
 #include <WiFi.h>
 
 const size_t maxIDLen = 32;
@@ -98,7 +95,6 @@ void updateDisplayStr() {
 }
 
 const MD_MAX72XX::moduleType_t HARDWARE_TYPE = MD_MAX72XX::FC16_HW;
-const uint8_t MAX_DEVICES = 16;
 
 #define USE_HARDWARE_SPI
 const uint8_t CLK_PIN = 2;
@@ -107,10 +103,11 @@ const uint8_t CS_PIN = 5;
 
 #ifdef USE_HARDWARE_SPI
 // Not using Parola for manual control
-MD_MAX72XX display = MD_MAX72XX(HARDWARE_TYPE, SPI, CS_PIN, MAX_DEVICES);
+MD_MAX72XX display =
+  MD_MAX72XX(HARDWARE_TYPE, SPI, CS_PIN, matrixModulesCount * 4);
 #else
 MD_MAX72XX display =
-  MD_MAX72XX(HARDWARE_TYPE, DATA_PIN, CLK_PIN, CS_PIN, MAX_DEVICES);
+  MD_MAX72XX(HARDWARE_TYPE, DATA_PIN, CLK_PIN, CS_PIN, matrixModulesCount * 4);
 #endif
 
 MD_MAX72XX_Print textDisplay(&display);
@@ -139,7 +136,7 @@ void setup() {
   display.control(MD_MAX72XX::INTENSITY, MAX_INTENSITY / 2);
 
   scrollingDisplay.setText(displayStr);
-  scrollingDisplay.periodBetweenShifts = 30; // 30 ms between shifts
+  scrollingDisplay.periodBetweenShifts = scrollPeriodSpeed;
 }
 
 void loop() {
