@@ -12,6 +12,17 @@
 // display.
 class MD_MAX72XX_Print : public Print {
   public:
+    /**
+     * @brief Constructor for MD_MAX72XX_Print, allowing "print"ing and other
+     *  common functions to be used with MD_MAX72XX displays.
+     *
+     * This enables using Arduino print functions like print, println, printf on
+     * supported builds to make printing text easy. \r sets the current column
+     * to the left most column. \n will clear the display. (and also do a
+     * carriage return as well)
+     *
+     * @param display A pointer to the MD_MAX72XX display object to print to.
+     */
     MD_MAX72XX_Print(MD_MAX72XX* display) {
       this->display = display;
       this->carriageReturn();

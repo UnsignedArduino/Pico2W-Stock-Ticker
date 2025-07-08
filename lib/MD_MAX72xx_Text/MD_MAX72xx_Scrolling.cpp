@@ -4,6 +4,13 @@
 
 #include "MD_MAX72xx_Scrolling.h"
 
+/**
+ * @brief Call this function as often as possible to update the scrolling text.
+ *
+ * This update function checks to make sure the text is scrolled at the set
+ * speed `MD_MAX72XX_Scrolling::periodBetweenShifts`. It will also handle text
+ * that is constantly changing.
+ */
 void MD_MAX72XX_Scrolling::update() {
   if (this->display == nullptr || this->strToDisplay == nullptr ||
       strlen(this->strToDisplay) == 0) {
@@ -44,6 +51,12 @@ void MD_MAX72XX_Scrolling::update() {
   }
 }
 
+/**
+ * @brief Get the width of the text in columns.
+ *
+ * @param text The text to get the width of.
+ * @return The number of columns it would take up.
+ */
 uint16_t MD_MAX72XX_Scrolling::getTextWidth(const char* text) {
   uint16_t width = 0;
   const size_t tempBufSize = 16; // Useless buffer, just to get column width
@@ -55,6 +68,12 @@ uint16_t MD_MAX72XX_Scrolling::getTextWidth(const char* text) {
   return width;
 }
 
+/**
+ * @brief Get the width of a single character in columns.
+ *
+ * @param c The character to get the width of.
+ * @return The number of columns it would take up.
+ */
 uint16_t MD_MAX72XX_Scrolling::getTextWidth(char c) {
   const size_t tempBufSize = 16; // Useless buffer, just to get column width
   uint8_t tempBuf[tempBufSize];

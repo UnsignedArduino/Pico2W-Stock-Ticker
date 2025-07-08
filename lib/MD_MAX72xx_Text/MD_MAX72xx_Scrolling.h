@@ -11,22 +11,46 @@
 // Manages continually scrolling a string of text across the display.
 class MD_MAX72XX_Scrolling {
   public:
+    /**
+     * @brief Constructor for MD_MAX72XX_Print, allowing scrolling text from the
+     *  right to the left.
+     *
+     * This enables easy scrolling at a configurable speed.
+     *
+     * @param display A pointer to the MD_MAX72XX display object to print to.
+     */
     MD_MAX72XX_Scrolling(MD_MAX72XX* display) {
       this->display = display;
     }
     ~MD_MAX72XX_Scrolling() = default;
 
+    /**
+     * @brief Set the text to display on the scrolling display. Does not copy,
+     *  only maintains a pointer. This allows live updating of the text.
+     *
+     * @param text The pointer to the text to display, the string can be
+     *  modified.
+     */
     void setText(const char* text) {
       this->strToDisplay = text;
       this->reset();
     }
 
+    /**
+     * @brief Get the text currently being displayed.
+     *
+     * @return const char* The pointer to the text currently being displayed.
+     */
     const char* getText() const {
       return this->strToDisplay;
     }
 
     void update();
 
+    /**
+     * @brief Reset the scrolling display to the initial state. (text to the
+     *  right of the screen, about to scroll in)
+     */
     void reset() {
       this->curCharIndex = 0;
       this->curCharColOffset = this->display->getColumnCount();
@@ -34,6 +58,12 @@ class MD_MAX72XX_Scrolling {
                                // immediately on next update
     }
 
+    /**
+     * @brief The time in milliseconds between each shift of the text.
+     *
+     * This is how long to wait before shifting the text to the left by one
+     * column. Lower values will make the text scroll faster.
+     */
     uint32_t periodBetweenShifts = 50;
 
   protected:
