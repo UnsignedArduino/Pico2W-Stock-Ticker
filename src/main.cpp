@@ -135,6 +135,7 @@ void setup() {
 #endif
   display.begin();
   display.clear();
+  display.control(MD_MAX72XX::UPDATE, MD_MAX72XX::OFF);
   display.control(MD_MAX72XX::INTENSITY, MAX_INTENSITY / 2);
 
   scrollingDisplay.setText(displayStr);
@@ -268,11 +269,13 @@ void loop() {
   } else {
     Serial1.println("Connecting to WiFi...");
     textDisplay.print("Connecting to WiFi...");
+    display.update();
     WiFi.begin(ssid, password);
     delay(1000);
 
     Serial1.println("Connected to WiFi");
     textDisplay.print("\nConnected to WiFi!");
+    display.update();
     Serial1.print("IP Address: ");
     Serial1.println(WiFi.localIP());
     delay(1000);

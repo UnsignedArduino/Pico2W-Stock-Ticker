@@ -14,30 +14,32 @@ void MD_MAX72XX_Scrolling::update() {
     return; // Not time to shift yet
   }
   this->nextShiftTime = millis() + this->periodBetweenShifts;
+  this->display->update(); // Update now, which will be more precise than
+                           // waiting till after we do all the computation
 
-  this->display->control(MD_MAX72XX::UPDATE, MD_MAX72XX::OFF);
-  this->display->clear();
+  const size_t strToDisplayLen = strlen(this->strToDisplay);
   const uint16_t colCount = this->display->getColumnCount();
+  this->display->clear();
   int16_t thisCurCol = this->curCharColOffset;
-  for (size_t i = this->curCharIndex;
-       i < strlen(this->strToDisplay) && thisCurCol < colCount; i++) {
+  for (size_t i = this->curCharIndex; // Start from the current character index
+       i < strToDisplayLen && // Keep going as long as we have characters to
+       thisCurCol < colCount; // display or columns left to fill
+       i++) {
     thisCurCol +=
       this->display->setChar(colCount - thisCurCol, this->strToDisplay[i]) +
       this->spaceBetweenChars;
   }
-  this->display->control(MD_MAX72XX::UPDATE, MD_MAX72XX::ON);
-
   // This column offset is from the left instead of from the right
   // So to move text left, we subtract
   this->curCharColOffset -= 1;
   // If the current character is scrolled completely past the left edge of the
   // display, then focus on the next character and set it's offset to 0
-  if (this->curCharColOffset <
-      -this->getTextWidth(this->strToDisplay[this->curCharIndex])) {
+  const char curChar = this->strToDisplay[this->curCharIndex];
+  if (this->curCharColOffset <= -this->getTextWidth(curChar)) {
     this->curCharColOffset = 0;
     this->curCharIndex++;
   }
-  if (this->curCharIndex >= strlen(this->strToDisplay)) {
+  if (this->curCharIndex >= strToDisplayLen) {
     this->reset();
   }
 }
