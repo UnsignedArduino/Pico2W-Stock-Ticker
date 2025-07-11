@@ -30,11 +30,11 @@ void startWiFiConfigOverUSBAndReboot(const char* msg) {
   Serial1.println("Exposing FatFSUSB for WiFi settings editing");
   wifiSettings.startFatFSUSB();
   Serial1.println("USB connected, waiting for eject...");
-  scrollingDisplay.setText(msg);
+  scrollingDisplay.setText(msg, true);
   while (wifiSettings.isFatFSUSBConnected()) {
     scrollingDisplay.update();
-    if (configBtn.pressed()) {
-      Serial1.println("Config button pressed, stopping FatFSUSB");
+    if (configBtn.released()) {
+      Serial1.println("Config button released, stopping FatFSUSB");
       break;
     }
   }
@@ -139,14 +139,9 @@ void loop() {
   // If configuration button pressed, start WiFi configuration over USB
   if (configBtn.pressed()) {
     Serial1.println("Config button pressed");
-    Serial1.println("Stopping WiFi");
+    Serial1.println("Stopping WiFi and rebooting");
     WiFi.end();
-    scrollingDisplay.reset();
-    display.clear();
-    display.update();
-    startWiFiConfigOverUSBAndReboot(
-      "Configuration button pressed, modify wifi_settings.json on USB drive "
-      "and eject to finish.");
+    rp2040.reboot();
   }
   if (WiFi.status() == WL_CONNECTED) {
     stockTicker.update();

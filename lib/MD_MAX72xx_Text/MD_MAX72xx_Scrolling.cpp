@@ -28,6 +28,11 @@ void MD_MAX72XX_Scrolling::update() {
   const uint16_t colCount = this->display->getColumnCount();
   this->display->clear();
   int16_t thisCurCol = this->curCharColOffset;
+  if (this->pretendPositiveOffset) {
+    // If we are pretending the offset is positive, then we start at the left
+    // side of the display and scroll right
+    thisCurCol = 1;
+  }
   for (size_t i = this->curCharIndex; // Start from the current character index
        i < strToDisplayLen && // Keep going as long as we have characters to
        thisCurCol < colCount; // display or columns left to fill
@@ -39,9 +44,14 @@ void MD_MAX72XX_Scrolling::update() {
   // This column offset is from the left instead of from the right
   // So to move text left, we subtract
   this->curCharColOffset -= 1;
+  // If we are pretending the offset is positive and we've finally hit the left
+  // side of the screen, undo the effect and continue as normal.
+  if (this->pretendPositiveOffset && this->curCharColOffset <= 0) {
+    this->pretendPositiveOffset = false;
+  }
+  const char curChar = this->strToDisplay[this->curCharIndex];
   // If the current character is scrolled completely past the left edge of the
   // display, then focus on the next character and set it's offset to 0
-  const char curChar = this->strToDisplay[this->curCharIndex];
   if (this->curCharColOffset <= -this->getTextWidth(curChar)) {
     this->curCharColOffset = 0;
     this->curCharIndex++;

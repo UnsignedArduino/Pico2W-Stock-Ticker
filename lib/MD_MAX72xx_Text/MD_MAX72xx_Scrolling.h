@@ -30,10 +30,13 @@ class MD_MAX72XX_Scrolling {
      *
      * @param text The pointer to the text to display, the string can be
      *  modified.
+     * @param startOnLeftInsteadOfRightSide If true, the text will start on the
+     *  left side and wait for a bit before scrolling instead of starting on the
+     *  right side off the screen.
      */
-    void setText(const char* text) {
+    void setText(const char* text, bool startOnLeftInsteadOfRightSide = false) {
       this->strToDisplay = text;
-      this->reset();
+      this->reset(startOnLeftInsteadOfRightSide);
     }
 
     /**
@@ -50,12 +53,17 @@ class MD_MAX72XX_Scrolling {
     /**
      * @brief Reset the scrolling display to the initial state. (text to the
      *  right of the screen, about to scroll in)
+     *
+     * @param startOnLeftInsteadOfRightSide If true, the text will start on the
+     *  left side and wait for a bit before scrolling instead of starting on the
+     *  right side off the screen.
      */
-    void reset() {
+    void reset(bool startOnLeftInsteadOfRightSide = false) {
       this->curCharIndex = 0;
       this->curCharColOffset = this->display->getColumnCount();
       this->nextShiftTime = 0; // Reset next shift time to 0 so it will shift
                                // immediately on next update
+      this->pretendPositiveOffset = startOnLeftInsteadOfRightSide;
     }
 
     /**
@@ -70,9 +78,12 @@ class MD_MAX72XX_Scrolling {
     MD_MAX72XX* display = nullptr;
     const char* strToDisplay = nullptr;
     int16_t curCharIndex = 0;
-    int16_t curCharColOffset =
-      0; // Instead of 0 being the right, we'll define 0 as offset from the left
-         // edge of the display
+    // Instead of 0 being the right, we'll define 0 as offset from the left edge
+    // of the display
+    int16_t curCharColOffset = 0;
+    // If true, then the text will start on the left side and wait for a bit
+    // before scrolling instead of starting on the right side off the screen.
+    bool pretendPositiveOffset = false;
 
     const uint16_t spaceBetweenChars = 1;
 
