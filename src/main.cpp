@@ -31,10 +31,14 @@ void startWiFiConfigOverUSBAndReboot(const char* msg) {
   wifiSettings.startFatFSUSB();
   Serial1.println("USB connected, waiting for eject...");
   scrollingDisplay.setText(msg, true);
+  bool hasPressedYet = false;
   while (wifiSettings.isFatFSUSBConnected()) {
     scrollingDisplay.update();
-    if (configBtn.released()) {
-      Serial1.println("Config button released, stopping FatFSUSB");
+    if (configBtn.pressed()) {
+      hasPressedYet = true;
+    }
+    if (configBtn.released() && hasPressedYet) {
+      Serial1.println("Config button pressed and released, stopping FatFSUSB");
       break;
     }
   }
