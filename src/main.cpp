@@ -33,6 +33,10 @@ void startWiFiConfigOverUSBAndReboot(const char* msg) {
   scrollingDisplay.setText(msg);
   while (wifiSettings.isFatFSUSBConnected()) {
     scrollingDisplay.update();
+    if (configBtn.pressed()) {
+      Serial1.println("Config button pressed, stopping FatFSUSB");
+      break;
+    }
   }
   wifiSettings.stopFatFSUSB();
   Serial1.println("Rebooting to try loading settings again");
