@@ -26,12 +26,13 @@ MD_MAX72XX display =
 MD_MAX72XX_Print textDisplay(&display);
 MD_MAX72XX_Scrolling scrollingDisplay(&display);
 
-void startWiFiConfigurationOverUSB() {
+void startWiFiConfigOverUSBAndReboot(const char* msg) {
   Serial1.println("Exposing FatFSUSB for WiFi settings editing");
   wifiSettings.startFatFSUSB();
   Serial1.println("USB connected, waiting for eject...");
+  scrollingDisplay.setText(msg);
   while (wifiSettings.isFatFSUSBConnected()) {
-    yield();
+    scrollingDisplay.update();
   }
   wifiSettings.stopFatFSUSB();
   Serial1.println("Rebooting to try loading settings again");
@@ -65,25 +66,59 @@ void setup() {
       // Write default settings because file not found
       wifiSettings.saveToDisk();
     }
-    startWiFiConfigurationOverUSB();
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wswitch"
+    switch (r) {
+      case Settings::WiFiLoadFromDiskResult::ERROR_FATFS_INIT_FAILED:
+        startWiFiConfigOverUSBAndReboot(
+          "Failed to initialize filesystem, eject USB drive to try again.");
+
+      case Settings::WiFiLoadFromDiskResult::ERROR_FILE_OPEN_FAILED:
+        startWiFiConfigOverUSBAndReboot(
+          "Modify wifi_settings.json on USB drive and eject to finish.");
+
+      case Settings::WiFiLoadFromDiskResult::ERROR_JSON_PARSE_TOO_DEEP:
+        startWiFiConfigOverUSBAndReboot(
+          "JSON too deep, modify wifi_settings.json on USB drive and eject to "
+          "finish.");
+      case Settings::WiFiLoadFromDiskResult::ERROR_JSON_PARSE_NO_MEMORY:
+        startWiFiConfigOverUSBAndReboot(
+          "JSON parsing failed due to insufficient memory, modify "
+          "wifi_settings.json on USB drive and eject to finish.");
+      case Settings::WiFiLoadFromDiskResult::ERROR_JSON_PARSE_INVALID_INPUT:
+        startWiFiConfigOverUSBAndReboot(
+          "JSON parsing failed due to invalid input, modify wifi_settings.json "
+          "on USB drive and eject to finish.");
+      case Settings::WiFiLoadFromDiskResult::ERROR_JSON_PARSE_INCOMPLETE_INPUT:
+        startWiFiConfigOverUSBAndReboot(
+          "JSON parsing failed due to incomplete input, modify "
+          "wifi_settings.json on USB drive and eject to finish.");
+      case Settings::WiFiLoadFromDiskResult::ERROR_JSON_PARSE_EMPTY_INPUT:
+        startWiFiConfigOverUSBAndReboot(
+          "JSON parsing failed due to empty input, modify wifi_settings.json "
+          "on USB drive and eject to finish.");
+      case Settings::WiFiLoadFromDiskResult::ERROR_JSON_PARSE_UNKNOWN_ERROR:
+        startWiFiConfigOverUSBAndReboot(
+          "JSON parsing failed due to unknown error, modify wifi_settings.json "
+          "on USB drive and eject to finish.");
+      case Settings::WiFiLoadFromDiskResult::ERROR_INVALID_SSID:
+        startWiFiConfigOverUSBAndReboot(
+          "Invalid SSID length, modify \"ssid\" key in wifi_settings.json on "
+          "USB drive and eject to finish.");
+      case Settings::WiFiLoadFromDiskResult::ERROR_INVALID_PASSWORD:
+        startWiFiConfigOverUSBAndReboot(
+          "Invalid password length, modify \"password\" key in "
+          "wifi_settings.json on USB drive and eject to finish.");
+    }
+#pragma clang diagnostic pop
   }
   // If configuration buton pressed, start WiFi configuration over USB
   if (configBtn.pressed()) {
     Serial1.println("Config button pressed");
-    startWiFiConfigurationOverUSB();
+    startWiFiConfigOverUSBAndReboot(
+      "Configuration button pressed, modify wifi_settings.json on USB drive "
+      "and eject to finish.");
   }
-  // If WiFi fail to connect, start WiFi configuration over USB
-  Serial1.println("Connecting to WiFi...");
-  WiFi.begin(wifiSettings.ssid, wifiSettings.password);
-  if (WiFi.status() != WL_CONNECTED) {
-    Serial1.println("WiFi connection failed");
-    startWiFiConfigurationOverUSB();
-  }
-  delay(1000);
-  Serial1.println("Connected to WiFi");
-  Serial1.print("IP Address: ");
-  Serial1.println(WiFi.localIP());
-  // Connected!
 
   Serial1.println(symbols);
   stockTicker.begin(apcaApiKeyId, apcaApiSecretKey, symbols, sourceFeed,
@@ -97,34 +132,46 @@ void loop() {
   static StockTicker::StockTickerStatus lastStatus =
     StockTicker::StockTickerStatus::OK;
 
+  // If configuration button pressed, start WiFi configuration over USB
+  if (configBtn.pressed()) {
+    Serial1.println("Config button pressed");
+    Serial1.println("Stopping WiFi");
+    WiFi.end();
+    scrollingDisplay.reset();
+    display.clear();
+    display.update();
+    startWiFiConfigOverUSBAndReboot(
+      "Configuration button pressed, modify wifi_settings.json on USB drive "
+      "and eject to finish.");
+  }
   if (WiFi.status() == WL_CONNECTED) {
     stockTicker.update();
     if (stockTicker.getStatus() != lastStatus) {
       lastStatus = stockTicker.getStatus();
       const char* msg = stockTickerStatusToMessage(lastStatus);
       Serial1.printf("Stock ticker status changed: %s\n", msg);
-      if (lastStatus == StockTicker::StockTickerStatus::OK) {
-        scrollingDisplay.setText(stockTicker.getDisplayStr());
-      } else {
-        scrollingDisplay.setText(msg);
-      }
     }
     scrollingDisplay.update();
   } else {
-    Serial1.println("Reconnecting to WiFi...");
+    Serial1.println("Connecting to WiFi...");
+    textDisplay.print("Connecting to WiFi...");
+    display.update();
     WiFi.begin(wifiSettings.ssid, wifiSettings.password);
     delay(1000);
+    // If WiFi connection fails, start WiFi configuration over USB
+    if (WiFi.status() != WL_CONNECTED) {
+      Serial1.println("WiFi connection failed");
+      startWiFiConfigOverUSBAndReboot(
+        "WiFi connection failed, modify \"ssid\" and \"password\" in "
+        "wifi_settings.json on USB drive and eject to finish.");
+    }
     Serial1.println("Connected to WiFi");
+    textDisplay.print("\nConnected to WiFi");
+    display.update();
     Serial1.print("IP Address: ");
     Serial1.println(WiFi.localIP());
     delay(1000);
     scrollingDisplay.reset();
     stockTicker.refreshOnNextUpdate();
-  }
-  if (configBtn.pressed()) {
-    Serial1.println("Config button pressed, rebooting");
-    Serial1.println("Stopping WiFi");
-    WiFi.end();
-    rp2040.reboot();
   }
 }

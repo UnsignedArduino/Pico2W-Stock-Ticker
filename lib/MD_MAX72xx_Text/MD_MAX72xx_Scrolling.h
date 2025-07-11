@@ -64,7 +64,7 @@ class MD_MAX72XX_Scrolling {
      * This is how long to wait before shifting the text to the left by one
      * column. Lower values will make the text scroll faster.
      */
-    uint32_t periodBetweenShifts = 50;
+    uint32_t periodBetweenShifts = 30;
 
   protected:
     MD_MAX72XX* display = nullptr;

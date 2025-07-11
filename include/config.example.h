@@ -12,8 +12,6 @@ const uint8_t matrixModulesCount = 4;
 // (lower is faster)
 const uint16_t scrollPeriodSpeed = 30;
 
-const char* ssid = "your-ssid";         // Replace with your WiFi SSID
-const char* password = "your-password"; // Replace with your WiFi password
 // Replace with your Alpaca Markets API key ID
 const char* apcaApiKeyId = "your-alpaca-markets-api-key-id";
 // Replace with your Alpaca Markets API secret Key

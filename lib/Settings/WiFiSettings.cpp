@@ -36,8 +36,8 @@ namespace Settings {
         return "Failed to open file for reading";
       }
       case WiFiLoadFromDiskResult::ERROR_JSON_PARSE_TOO_DEEP: {
-        return "JSON parsing failed due to too deep structure - please check "
-               "wifi_settings.json";
+        return "JSON parsing failed due to too deep structure - please modify "
+               "wifi_settings.json and eject USB drive to retry.";
       }
       case WiFiLoadFromDiskResult::ERROR_JSON_PARSE_NO_MEMORY: {
         return "JSON parsing failed due to insufficient memory - please check "
