@@ -28,11 +28,11 @@ MD_MAX72XX_Scrolling scrollingDisplay(&display);
 
 void startWiFiConfigOverUSBAndReboot(const char* msg) {
   Serial1.println("Exposing FatFSUSB for WiFi settings editing");
-  wifiSettings.startFatFSUSB();
+  wifiSettings.fatFSUSBBegin();
   Serial1.println("USB connected, waiting for eject...");
   scrollingDisplay.setText(msg, true);
   bool hasPressedYet = false;
-  while (wifiSettings.isFatFSUSBConnected()) {
+  while (wifiSettings.fatFSUSBConnected()) {
     scrollingDisplay.update();
     if (configBtn.pressed()) {
       hasPressedYet = true;
@@ -42,7 +42,7 @@ void startWiFiConfigOverUSBAndReboot(const char* msg) {
       break;
     }
   }
-  wifiSettings.stopFatFSUSB();
+  wifiSettings.fatFSUSBEnd();
   Serial1.println("Rebooting to try loading settings again");
   rp2040.reboot();
 }
@@ -65,58 +65,60 @@ void setup() {
   display.control(MD_MAX72XX::UPDATE, MD_MAX72XX::OFF);
   display.control(MD_MAX72XX::INTENSITY, MAX_INTENSITY / 2);
 
-  const Settings::WiFiLoadFromDiskResult r = wifiSettings.loadFromDisk();
+  const Settings::LoadFromDiskResult r = wifiSettings.loadFromDisk();
   // If fail to load settings, start WiFi configuration over USB
-  if (r != Settings::WiFiLoadFromDiskResult::OK) {
-    Serial1.printf("Failed to load settings from disk: %s\n",
-                   Settings::wiFiLoadFromDiskResultToMessage(r));
-    if (r == Settings::WiFiLoadFromDiskResult::ERROR_FILE_OPEN_FAILED) {
+  if (r != Settings::LoadFromDiskResult::OK) {
+    Serial1.printf("Failed to load settings from disk: %s\n", r);
+    if (r == Settings::LoadFromDiskResult::ERROR_FILE_OPEN_FAILED) {
       // Write default settings because file not found
       wifiSettings.saveToDisk();
     }
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wswitch"
     switch (r) {
-      case Settings::WiFiLoadFromDiskResult::ERROR_FATFS_INIT_FAILED:
+      case Settings::LoadFromDiskResult::ERROR_FATFS_INIT_FAILED:
         startWiFiConfigOverUSBAndReboot(
           "Failed to initialize filesystem, eject USB drive to try again.");
 
-      case Settings::WiFiLoadFromDiskResult::ERROR_FILE_OPEN_FAILED:
+      case Settings::LoadFromDiskResult::ERROR_FILE_OPEN_FAILED:
         startWiFiConfigOverUSBAndReboot(
           "Modify wifi_settings.json on USB drive and eject to finish.");
 
-      case Settings::WiFiLoadFromDiskResult::ERROR_JSON_PARSE_TOO_DEEP:
+      case Settings::LoadFromDiskResult::ERROR_JSON_PARSE_TOO_DEEP:
         startWiFiConfigOverUSBAndReboot(
           "JSON too deep, modify wifi_settings.json on USB drive and eject to "
           "finish.");
-      case Settings::WiFiLoadFromDiskResult::ERROR_JSON_PARSE_NO_MEMORY:
+      case Settings::LoadFromDiskResult::ERROR_JSON_PARSE_NO_MEMORY:
         startWiFiConfigOverUSBAndReboot(
           "JSON parsing failed due to insufficient memory, modify "
           "wifi_settings.json on USB drive and eject to finish.");
-      case Settings::WiFiLoadFromDiskResult::ERROR_JSON_PARSE_INVALID_INPUT:
+      case Settings::LoadFromDiskResult::ERROR_JSON_PARSE_INVALID_INPUT:
         startWiFiConfigOverUSBAndReboot(
           "JSON parsing failed due to invalid input, modify wifi_settings.json "
           "on USB drive and eject to finish.");
-      case Settings::WiFiLoadFromDiskResult::ERROR_JSON_PARSE_INCOMPLETE_INPUT:
+      case Settings::LoadFromDiskResult::ERROR_JSON_PARSE_INCOMPLETE_INPUT:
         startWiFiConfigOverUSBAndReboot(
           "JSON parsing failed due to incomplete input, modify "
           "wifi_settings.json on USB drive and eject to finish.");
-      case Settings::WiFiLoadFromDiskResult::ERROR_JSON_PARSE_EMPTY_INPUT:
+      case Settings::LoadFromDiskResult::ERROR_JSON_PARSE_EMPTY_INPUT:
         startWiFiConfigOverUSBAndReboot(
           "JSON parsing failed due to empty input, modify wifi_settings.json "
           "on USB drive and eject to finish.");
-      case Settings::WiFiLoadFromDiskResult::ERROR_JSON_PARSE_UNKNOWN_ERROR:
+      case Settings::LoadFromDiskResult::ERROR_JSON_PARSE_UNKNOWN_ERROR:
         startWiFiConfigOverUSBAndReboot(
           "JSON parsing failed due to unknown error, modify wifi_settings.json "
           "on USB drive and eject to finish.");
-      case Settings::WiFiLoadFromDiskResult::ERROR_INVALID_SSID:
-        startWiFiConfigOverUSBAndReboot(
-          "Invalid SSID length, modify \"ssid\" key in wifi_settings.json on "
-          "USB drive and eject to finish.");
-      case Settings::WiFiLoadFromDiskResult::ERROR_INVALID_PASSWORD:
-        startWiFiConfigOverUSBAndReboot(
-          "Invalid password length, modify \"password\" key in "
-          "wifi_settings.json on USB drive and eject to finish.");
+      case Settings::LoadFromDiskResult::ERROR_VALIDATION_FAILED:
+        switch (wifiSettings.getLastValidationResult()) {
+          case Settings::WiFiSettingsValidationResult::ERROR_INVALID_SSID:
+            startWiFiConfigOverUSBAndReboot(
+              "Invalid SSID, modify \"ssid\" key in wifi_settings.json on "
+              "USB drive and eject to finish.");
+          case Settings::WiFiSettingsValidationResult::ERROR_INVALID_PASSWORD:
+            startWiFiConfigOverUSBAndReboot(
+              "Invalid password, modify \"password\" key in "
+              "wifi_settings.json on USB drive and eject to finish.");
+        }
     }
 #pragma clang diagnostic pop
   }
@@ -165,7 +167,7 @@ void loop() {
     if (WiFi.status() != WL_CONNECTED) {
       Serial1.println("WiFi connection failed");
       startWiFiConfigOverUSBAndReboot(
-        "WiFi connection failed, modify \"ssid\" and \"password\" in "
+        "WiFi connection failed, modify \"ssid\" and/or \"password\" in "
         "wifi_settings.json on USB drive and eject to finish.");
     }
     Serial1.println("Connected to WiFi");
