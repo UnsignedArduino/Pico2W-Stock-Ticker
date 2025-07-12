@@ -12,7 +12,7 @@ namespace Settings {
   const size_t MAX_SSID_LENGTH = 32 + 1; // +1 for null terminator
   const size_t MAX_PASSWORD_LENGTH = 63 + 1;
 
-  enum WiFiSettingsValidationResult {
+  enum class WiFiSettingsValidationResult {
     OK = 0,
     ERROR_INVALID_SSID = 1,
     ERROR_INVALID_PASSWORD = 2

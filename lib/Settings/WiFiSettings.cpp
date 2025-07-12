@@ -11,12 +11,14 @@ namespace Settings {
     const char* parsedSSID = doc["ssid"];
     const char* parsedPassword = doc["password"];
     if (strlen(parsedSSID) == 0 || strlen(parsedSSID) >= MAX_SSID_LENGTH) {
-      return WiFiSettingsValidationResult::ERROR_INVALID_SSID;
+      return static_cast<uint8_t>(
+        WiFiSettingsValidationResult::ERROR_INVALID_SSID);
     }
     if (strlen(parsedPassword) >= MAX_PASSWORD_LENGTH) {
-      return WiFiSettingsValidationResult::ERROR_INVALID_PASSWORD;
+      return static_cast<uint8_t>(
+        WiFiSettingsValidationResult::ERROR_INVALID_PASSWORD);
     }
-    return WiFiSettingsValidationResult::OK;
+    return static_cast<uint8_t>(WiFiSettingsValidationResult::OK);
   }
 #pragma clang diagnostic pop
 

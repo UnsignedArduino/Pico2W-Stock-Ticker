@@ -40,7 +40,7 @@ namespace StockTicker {
   /**
    * @brief Status codes for the StockTicker class.
    */
-  enum StockTickerStatus {
+  enum class StockTickerStatus {
     OK,
     ERROR_NO_WIFI,
     ERROR_INIT_REQUEST_FAILED,
@@ -55,7 +55,7 @@ namespace StockTicker {
     ERROR_UNKNOWN
   };
 
-  const char* stockTickerStatusToMessage(StockTickerStatus s);
+  uint16_t stockSymbolsCount(const char* symbolsString);
 
   /**
    * @brief StockTicker class to fetch and display stock prices from Alpaca

@@ -5,36 +5,26 @@
 #include <StockTicker.h>
 
 namespace StockTicker {
-  const char* stockTickerStatusToMessage(StockTickerStatus s) {
-    switch (s) {
-      case StockTickerStatus::OK:
-        return "OK";
-      case StockTickerStatus::ERROR_NO_WIFI:
-        return "No WiFi connection, check WiFi credentials";
-      case StockTickerStatus::ERROR_INIT_REQUEST_FAILED:
-        return "Failed to initialize request";
-      case StockTickerStatus::ERROR_CONNECTION_FAILED:
-        return "Connection failed, check WiFi connection";
-      case StockTickerStatus::ERROR_SEND_HEADER_FAILED:
-        return "Failed to send header, check WiFi connection";
-      case StockTickerStatus::ERROR_SEND_PAYLOAD_FAILED:
-        return "Failed to send payload, check WiFi connection";
-      case StockTickerStatus::ERROR_BAD_JSON_RESPONSE:
-        return "Bad JSON response, try again later";
-      case StockTickerStatus::ERROR_BAD_REQUEST:
-        return "Bad request, check configuration";
-      case StockTickerStatus::ERROR_FORBIDDEN:
-        return "Forbidden, check Alpaca Markets API key and secret";
-      case StockTickerStatus::ERROR_TOO_MANY_REQUESTS:
-        return "Too many requests, check request period or upgrade Alpaca "
-               "Markets account";
-      case StockTickerStatus::ERROR_INTERNAL_SERVER_ERROR:
-        return "Internal server error, check Alpaca Markets' Slack or "
-               "Community Forum and try again later";
-      case StockTickerStatus::ERROR_UNKNOWN:
-        return "Unknown error";
+  uint16_t stockSymbolsCount(const char* symbolsString) {
+    char str[MAX_SYMBOLS_STRING_LEN];
+    strncpy(str, symbolsString, MAX_SYMBOLS_STRING_LEN);
+    char* token;
+    char* rest = str;
+    uint16_t symbolCount = 0;
+    while ((token = strtok_r(rest, ",", &rest))) {
+      if (strlen(token) < MAX_ID_LEN) {
+        //        strncpy(allSymbolPrices[this->symbolCount].id, token,
+        //        MAX_ID_LEN);
+        //        // If price is negative than no data yet
+        //        allSymbolPrices[this->symbolCount].price = -1;
+        //        Serial1.printf("Symbol '%s' initialized at index %d\n", token,
+        //                       this->symbolCount);
+        symbolCount++;
+      } else {
+        //        Serial1.printf("Symbol '%s' is too long, skipping.\n", token);
+      }
     }
-    return "Unknown status code"; // Should never reach here
+    return symbolCount;
   }
 
   /**
@@ -73,7 +63,7 @@ namespace StockTicker {
     while ((token = strtok_r(rest, ",", &rest)) &&
            this->symbolCount < MAX_SYMBOLS) {
       if (strlen(token) < MAX_ID_LEN) {
-        strncpy(allSymbolPrices[this->symbolCount].id, token, MAX_ID_LEN);
+        strncpy(this->allSymbolPrices[this->symbolCount].id, token, MAX_ID_LEN);
         // If price is negative than no data yet
         allSymbolPrices[this->symbolCount].price = -1;
         Serial1.printf("Symbol '%s' initialized at index %d\n", token,
@@ -234,6 +224,7 @@ namespace StockTicker {
             Serial1.write(httpsClient.getStream().read());
           }
 #endif
+          return;
         }
       } else {
         Serial1.println("Failed to initialize request");
