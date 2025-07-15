@@ -31,11 +31,11 @@ namespace Settings {
       uint8_t validateSettings(JsonDocument& doc) override;
 
       /**
-       * @brief WiFi SSID
+       * @brief WiFi SSID. Required.
        */
       char ssid[MAX_SSID_LENGTH] = "";
       /**
-       * @brief WiFi password
+       * @brief WiFi password. Required. (but can be empty string)
        */
       char password[MAX_PASSWORD_LENGTH] = "";
 

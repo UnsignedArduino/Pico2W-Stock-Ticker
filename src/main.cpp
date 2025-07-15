@@ -96,8 +96,6 @@ void setup() {
       // Write default settings because file not found
       wifiSettings.saveToDisk();
     }
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wswitch"
     switch (r) {
       case Settings::LoadFromDiskResult::ERROR_FATFS_INIT_FAILED:
         startWiFiConfigOverUSBAndReboot(
@@ -140,9 +138,12 @@ void setup() {
             startWiFiConfigOverUSBAndReboot(
               "Invalid password, modify \"password\" key in "
               "wifi_settings.json on USB drive and eject to finish.");
+          case Settings::WiFiSettingsValidationResult::OK:
+            break;
         }
+      case Settings::LoadFromDiskResult::OK:
+        break;
     }
-#pragma clang diagnostic pop
   }
   const Settings::LoadFromDiskResult r2 = tickerSettings.loadFromDisk();
   // If fail to load Ticker settings, start Ticker configuration over USB
@@ -152,8 +153,6 @@ void setup() {
       // Write default settings because file not found
       tickerSettings.saveToDisk();
     }
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wswitch"
     switch (r2) {
       case Settings::LoadFromDiskResult::ERROR_FATFS_INIT_FAILED:
         startTickerConfigOverUSBAndReboot(
@@ -211,9 +210,33 @@ void setup() {
               "\"sip\", \"iex\", \"delayed_sip\", \"boats\", \"overnight\", or "
               "\"otc\") in ticker_settings.json on USB drive and eject to "
               "finish.");
+          case Settings::TickerSettingsValidationResult::
+            ERROR_INVALID_REQUEST_PERIOD:
+            startTickerConfigOverUSBAndReboot(
+              "Invalid request period, modify \"requestPeriod\" key (must be a "
+              "natural number) in ticker_settings.json on USB drive and eject "
+              "to finish.");
+            break;
+          case Settings::TickerSettingsValidationResult::
+            ERROR_INVALID_SCROLL_PERIOD:
+            startTickerConfigOverUSBAndReboot(
+              "Invalid scroll period, modify \"scrollPeriod\" key (must be a "
+              "natural number) in ticker_settings.json on USB drive and eject "
+              "to finish.");
+            break;
+          case Settings::TickerSettingsValidationResult::
+            ERROR_INVALID_DISPLAY_BRIGHTNESS:
+            startTickerConfigOverUSBAndReboot(
+              "Invalid display brightness, modify \"displayBrightness\" key "
+              "(must be a natural number between 1 and 15 inclusive) in "
+              "ticker_settings.json on USB drive and eject to finish.");
+            break;
+          case Settings::TickerSettingsValidationResult::OK:
+            break;
         }
+      case Settings::LoadFromDiskResult::OK:
+        break;
     }
-#pragma clang diagnostic pop
   }
   // If configuration buton pressed, start WiFi or Ticker configuration over USB
   if (configBtn.pressed()) {
@@ -226,10 +249,12 @@ void setup() {
   Serial1.println(tickerSettings.symbols);
   stockTicker.begin(tickerSettings.apcaApiKeyId,
                     tickerSettings.apcaApiSecretKey, tickerSettings.symbols,
-                    tickerSettings.sourceFeed, requestPeriod);
+                    tickerSettings.sourceFeed,
+                    tickerSettings.requestPeriod * 1000);
 
   scrollingDisplay.setText(stockTicker.getDisplayStr());
-  scrollingDisplay.periodBetweenShifts = scrollPeriodSpeed;
+  scrollingDisplay.periodBetweenShifts = tickerSettings.scrollPeriod;
+  display.control(MD_MAX72XX::INTENSITY, tickerSettings.displayBrightness);
 }
 
 void loop() {
